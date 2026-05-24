@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PingBot - Architecture Docs</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --border: #2a2d3a;
+      --accent: #4f8ef7;
+      --green: #2ecc71;
+      --red: #e74c3c;
+      --yellow: #f39c12;
+      --text: #e0e0e0;
+      --muted: #8892a4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+    }
+
+    nav {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    nav h1 {
+      font-size: 1.1rem;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: .9rem;
+      transition: color .2s;
+    }
+
+    nav a:hover {
+      color: var(--accent);
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      color: var(--accent);
+      margin: 48px 0 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      color: #c9d1e0;
+      margin: 28px 0 10px;
+    }
+
+    h4 {
+      font-size: .95rem;
+      color: var(--muted);
+      margin: 16px 0 6px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    p {
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    code {
+      background: #252836;
+      color: #e2a562;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: .85rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 24px;
+      margin: 20px 0;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      overflow-x: auto;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+
+    .badge.blue {
+      background: #1a3a6b;
+      color: #4f8ef7;
+    }
+
+    .badge.green {
+      background: #1a3d2b;
+      color: var(--green);
+    }
+
+    .badge.yellow {
+      background: #3d2e0a;
+      color: var(--yellow);
+    }
+
+    .badge.red {
+      background: #3d1010;
+      color: var(--red);
+    }
+
+    .flow {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 12px 0;
+    }
+
+    .flow-step {
+      display: flex;
+      gap: 14px;
+      margin: 8px 0;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-body {
+      flex: 1;
+    }
+
+    .step-title {
+      color: var(--text);
+      font-weight: 600;
+      font-size: .9rem;
+    }
+
+    .step-desc {
+      color: var(--muted);
+      font-size: .85rem;
+      margin-top: 2px;
+    }
+
+    .arrow {
+      color: var(--border);
+      margin: 0 4px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+    }
+
+    th {
+      background: var(--card);
+      color: var(--accent);
+      text-align: left;
+      padding: 10px 14px;
+      font-size: .8rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-size: .88rem;
+      vertical-align: top;
+    }
+
+    td:first-child {
+      color: var(--text);
+      font-family: monospace;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .tag-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 8px 0;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 40px 0;
+    }
+
+    .env-table td:first-child {
+      color: #e2a562;
+    }
+  </style>
+</head>
+
+<body>
+
+  <nav>
+    <h1>💡 PingBot Docs</h1>
+    <a href="#files">Files</a>
+    <a href="#models">Models</a>
+    <a href="#flows">Flows</a>
+    <a href="#env">Config</a>
+    <a href="#testing">Testing</a>
+  </nav>
+
+  <main>
+
+    <!-- ── OVERVIEW ── -->
+    <h2 id="overview">Overview</h2>
+    <p>PingBot is an asynchronous Telegram bot that monitors network hosts (IP or domain) via ICMP ping. It notifies users when connectivity status changes, tracks outage history, and provides
+      per-host management controls.</p>
+    <div class="tag-row">
+      <span class="badge blue">Python 3.14</span>
+      <span class="badge blue">aiogram 3.x</span>
+      <span class="badge green">PostgreSQL 18</span>
+      <span class="badge yellow">SQLAlchemy async</span>
+      <span class="badge yellow">Alembic</span>
+      <span class="badge blue">icmplib</span>
+      <span class="badge blue">Docker</span>
+    </div>
+
+    <!-- ── FILES ── -->
+    <h2 id="files">File Map</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>📁 <code>src/</code></h3>
+        <table>
+          <tr>
+            <th>File</th>
+            <th>Purpose</th>
+          </tr>
+          <tr>
+            <td>main.py</td>
+            <td>Entry point - wires bot, dispatcher, registers BotFather commands, starts monitoring task</td>
+          </tr>
+          <tr>
+            <td>config.py</td>
+            <td>Loads &amp; validates all env vars (BOT_TOKEN, DATABASE_URL, TZ, STATUS_CHANGE_THRESHOLD)</td>
+          </tr>
+          <tr>
+            <td>database.py</td>
+            <td>SQLAlchemy engine, session factory, and ORM models (Host, Outage)</td>
+          </tr>
+          <tr>
+            <td>handlers.py</td>
+            <td>All Telegram command/callback handlers, FSM flows, keyboard builders, address validation</td>
+          </tr>
+          <tr>
+            <td>monitor.py</td>
+            <td>Background ping loop, consecutive-ping threshold logic, notification dispatch</td>
+          </tr>
+          <tr>
+            <td>logger.py</td>
+            <td>Structured logging setup (stdout, timestamped)</td>
+          </tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>📁 <code>.ci-cd/</code></h3>
+        <table>
+          <tr>
+            <th>File</th>
+            <th>Purpose</th>
+          </tr>
+          <tr>
+            <td>Dockerfile</td>
+            <td>Multi-stage build - pipenv venv in /app/.venv, slim runtime image</td>
+          </tr>
+          <tr>
+            <td>docker-compose.yml</td>
+            <td>Orchestrates: db (Postgres), bot, pgadmin services</td>
+          </tr>
+          <tr>
+            <td>.env.example</td>
+            <td>Template for all required environment variables</td>
+          </tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>📁 <code>tests/</code></h3>
+        <table>
+          <tr>
+            <th>File</th>
+            <th>Purpose</th>
+          </tr>
+          <tr>
+            <td>conftest.py</td>
+            <td>Global fixtures - mocks env vars, creates isolated SQLite tempfile DB</td>
+          </tr>
+          <tr>
+            <td>test_database.py</td>
+            <td>CRUD tests for Host and Outage models</td>
+          </tr>
+          <tr>
+            <td>test_handlers.py</td>
+            <td>Unit tests for FSM handler functions with mocked messages &amp; state</td>
+          </tr>
+          <tr>
+            <td>test_monitor.py</td>
+            <td>Tests for ping logic, duration formatting, and counter behavior</td>
+          </tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>📁 <code>alembic/</code></h3>
+        <p>Standard Alembic migration directory. <code>alembic.ini</code> points to <code>alembic/alembic.ini</code>. Migrations are generated via temporary Docker container and stored in
+          <code>migrations/versions/</code>.</p>
+      </div>
+    </div>
+
+    <!-- ── MODELS ── -->
+    <h2 id="models">Database Models</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>🖥 <code>Host</code> - table: <em>hosts</em></h3>
+        <table>
+          <tr>
+            <th>Column</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td>id</td>
+            <td>Integer PK</td>
+            <td>Auto-increment primary key</td>
+          </tr>
+          <tr>
+            <td>user_id</td>
+            <td>BigInteger</td>
+            <td>Telegram user ID of the owner</td>
+          </tr>
+          <tr>
+            <td>address</td>
+            <td>String</td>
+            <td>IPv4 or domain name to monitor</td>
+          </tr>
+          <tr>
+            <td>pretty_name</td>
+            <td>String</td>
+            <td>User-friendly display name</td>
+          </tr>
+          <tr>
+            <td>is_active</td>
+            <td>Boolean</td>
+            <td>Whether monitoring is running (can be paused)</td>
+          </tr>
+          <tr>
+            <td>status_up</td>
+            <td>Boolean|NULL</td>
+            <td>Last <em>confirmed</em> status. NULL = first check pending</td>
+          </tr>
+          <tr>
+            <td>last_change</td>
+            <td>DateTime(tz)</td>
+            <td>Timestamp of last confirmed status change</td>
+          </tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>⚡ <code>Outage</code> - table: <em>outages</em></h3>
+        <table>
+          <tr>
+            <th>Column</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td>id</td>
+            <td>Integer PK</td>
+            <td>Auto-increment primary key</td>
+          </tr>
+          <tr>
+            <td>host_id</td>
+            <td>FK → hosts.id</td>
+            <td>Which host had the outage</td>
+          </tr>
+          <tr>
+            <td>offline_at</td>
+            <td>DateTime(tz)</td>
+            <td>When the host went DOWN (confirmed)</td>
+          </tr>
+          <tr>
+            <td>online_at</td>
+            <td>DateTime(tz)|NULL</td>
+            <td>When it came back UP. NULL = currently still down</td>
+          </tr>
+        </table>
+        <p>An open outage record (<code>online_at = NULL</code>) means the host is currently considered DOWN.</p>
+      </div>
+    </div>
+
+    <!-- ── FLOWS ── -->
+    <h2 id="flows">User Flows</h2>
+
+    <h3>1. Add Host Flow (<code>/add</code> or ➕ button)</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Trigger</div>
+          <div class="step-desc">User sends <code>/add</code> command or taps "➕ Додати адресу" reply button → <code>cmd_add()</code> / <code>btn_add()</code></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">FSM: waiting_for_address</div>
+          <div class="step-desc">Bot replies "Enter IPv4 or domain". Cancel keyboard shown. State set to <code>AddHostState.waiting_for_address</code></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Validation - <code>process_address()</code></div>
+          <div class="step-desc"><code>is_valid_ipv4()</code> checks 4 octets 0–255. <code>is_valid_domain()</code> checks RFC hostname pattern. On failure: re-prompt same state. On success: advance
+            to <code>waiting_for_name</code></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">FSM: waiting_for_name - <code>process_name()</code></div>
+          <div class="step-desc">User enters a name (or sends anything - empty defaults to the address itself). Host saved to DB. Main menu keyboard restored.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>2. Delete Host Flow (<code>/delete</code> or 🗑️ button)</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Trigger</div>
+          <div class="step-desc">User sends <code>/delete</code> or taps "🗑️ Видалити адресу" → <code>_show_delete_list()</code>: sends each host card with full inline keyboard</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Tap 🗑️ Видалити on a card - <code>callback_delete_confirm()</code></div>
+          <div class="step-desc">The host card's inline keyboard is replaced with <code>[✅ Так, видалити | ↩️ Назад]</code></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3a</div>
+        <div class="step-body">
+          <div class="step-title">Confirm - <code>callback_delete_execute()</code></div>
+          <div class="step-desc">Host deleted from DB via <code>session.delete(host)</code>. Message text replaced with "🗑️ Name (address) видалено."</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3b</div>
+        <div class="step-body">
+          <div class="step-title">Cancel - <code>callback_delete_cancel()</code></div>
+          <div class="step-desc">Original host keyboard restored via <code>edit_reply_markup()</code>. No DB changes.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>3. Rename Host Flow (✏️ inline button)</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title"><code>callback_rename()</code></div>
+          <div class="step-desc">Stores <code>host_id</code> in FSM data, sets state <code>RenameState.waiting_for_name</code>. Shows cancel keyboard.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title"><code>process_new_name()</code></div>
+          <div class="step-desc">Reads new name (max 50 chars) from message, updates DB, restores main menu keyboard.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>4. Background Monitoring Loop - <code>run_monitoring()</code></h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Every 60 seconds</div>
+          <div class="step-desc">All <code>is_active=True</code> hosts fetched. Pings run in parallel via <code>asyncio.gather()</code> using <code>check_host()</code> (ICMP, count=2, timeout=2s)
+          </div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">First ping ever</div>
+          <div class="step-desc"><code>status_up = NULL</code> → silently set initial status, no notification sent.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Status unchanged</div>
+          <div class="step-desc">Result matches <code>host.status_up</code> → any pending counter is reset and discarded.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Status changed - counter starts</div>
+          <div class="step-desc">In-memory <code>_pending_changes[host_id] = (new_status, count)</code> tracks consecutive confirmations.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">Threshold reached (<code>STATUS_CHANGE_THRESHOLD</code>)</div>
+          <div class="step-desc">DB updated (<code>status_up</code>, <code>last_change</code>). Outage record created/closed. Telegram notification sent via <code>bot.send_message()</code> with
+            Markdown bold.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>5. Cancel Flow (❌ Скасувати)</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title"><code>cmd_cancel()</code></div>
+          <div class="step-desc">Matches reply text "❌ Скасувати" at any FSM state. Clears state, restores main menu keyboard. Works for both AddHostState and RenameState.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── KEYBOARDS ── -->
+    <h2>Keyboard Architecture</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Reply Keyboards (persistent bottom bar)</h3>
+        <table>
+          <tr>
+            <th>Function</th>
+            <th>Shown When</th>
+            <th>Buttons</th>
+          </tr>
+          <tr>
+            <td>get_main_menu_keyboard()</td>
+            <td>Default / after any flow completes</td>
+            <td>➕ Додати адресу · 📋 Мій список · 🗑️ Видалити адресу</td>
+          </tr>
+          <tr>
+            <td>get_cancel_keyboard()</td>
+            <td>During any active FSM state</td>
+            <td>❌ Скасувати</td>
+          </tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Inline Keyboards (per message)</h3>
+        <table>
+          <tr>
+            <th>Function</th>
+            <th>Callback prefix</th>
+            <th>Action</th>
+          </tr>
+          <tr>
+            <td>get_host_keyboard()</td>
+            <td>check_ / toggle_ / rename_ / delete_confirm_</td>
+            <td>Per-host management card</td>
+          </tr>
+          <tr>
+            <td>get_delete_confirm_keyboard()</td>
+            <td>delete_execute_ / delete_cancel_</td>
+            <td>Confirm/cancel deletion</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── ENV ── -->
+    <h2 id="env">Environment Variables</h2>
+    <table class="env-table">
+      <tr>
+        <th>Variable</th>
+        <th>Required</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>BOT_TOKEN</td>
+        <td><span class="badge red">required</span></td>
+        <td>-</td>
+        <td>Telegram bot token from @BotFather</td>
+      </tr>
+      <tr>
+        <td>DATABASE_URL</td>
+        <td><span class="badge red">required</span></td>
+        <td>-</td>
+        <td>SQLAlchemy async URL, e.g. <code>postgresql+asyncpg://user:pass@db/dbname</code></td>
+      </tr>
+      <tr>
+        <td>POSTGRES_USER</td>
+        <td><span class="badge red">required</span></td>
+        <td>-</td>
+        <td>PostgreSQL username (used by docker-compose)</td>
+      </tr>
+      <tr>
+        <td>POSTGRES_PASSWORD</td>
+        <td><span class="badge red">required</span></td>
+        <td>-</td>
+        <td>PostgreSQL password</td>
+      </tr>
+      <tr>
+        <td>POSTGRES_DB</td>
+        <td><span class="badge red">required</span></td>
+        <td>-</td>
+        <td>PostgreSQL database name</td>
+      </tr>
+      <tr>
+        <td>TZ</td>
+        <td><span class="badge green">optional</span></td>
+        <td>Europe/Kyiv</td>
+        <td>IANA timezone for notification timestamps</td>
+      </tr>
+      <tr>
+        <td>STATUS_CHANGE_THRESHOLD</td>
+        <td><span class="badge green">optional</span></td>
+        <td>5</td>
+        <td>Consecutive pings before confirming status change (~minutes)</td>
+      </tr>
+      <tr>
+        <td>PGADMIN_DEFAULT_EMAIL</td>
+        <td><span class="badge yellow">pgadmin</span></td>
+        <td>admin@svitlo.bot</td>
+        <td>pgAdmin login email</td>
+      </tr>
+      <tr>
+        <td>PGADMIN_DEFAULT_PASSWORD</td>
+        <td><span class="badge yellow">pgadmin</span></td>
+        <td>adminpassword</td>
+        <td>pgAdmin login password</td>
+      </tr>
+    </table>
+
+    <!-- ── TESTING ── -->
+    <h2 id="testing">Testing</h2>
+    <p>Tests run inside an isolated <code>python:3.14-slim</code> Docker container - same as CI/CD. A real SQLite tempfile is used instead of shared memory to avoid <code>aiosqlite</code> I/O locking
+      issues.</p>
+    <table>
+      <tr>
+        <th>File</th>
+        <th>What it tests</th>
+      </tr>
+      <tr>
+        <td>test_database.py</td>
+        <td>Host creation, query, Outage record creation and closing</td>
+      </tr>
+      <tr>
+        <td>test_handlers.py</td>
+        <td>/start clears state, /add triggers FSM, address validation accepts/rejects inputs</td>
+      </tr>
+      <tr>
+        <td>test_monitor.py</td>
+        <td>duration formatting, check_host ping mocking, counter accumulation, counter reset on recovery</td>
+      </tr>
+    </table>
+    <h4>Run locally</h4>
+    <code>docker run --rm -v "${PWD}:/app" -w /app python:3.14-slim sh -c "pip install pipenv &amp;&amp; pipenv install --dev &amp;&amp; pipenv run pytest --cov=src tests -v"</code>
+
+  </main>
+</body>
+
+</html>
