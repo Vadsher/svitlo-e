@@ -13,6 +13,14 @@ An asynchronous Telegram bot designed to monitor the availability of network hos
 - ⏸️ **Granular Control**: Ability to temporarily pause monitoring for individual hosts, rename them, delete them, or instantly trigger manual status checks.
 
 ## 🚀 Planned Features (Roadmap)
+**🌍 Localization**
+- Add English localization and bot language selection.
+
+**📋 "My List" Flow Improvements**
+- Split the flow depending on the number of saved addresses:
+  1) **Multiple addresses**: Show a list of addresses without inline buttons. Clicking an address opens its details with an action menu (Check / Pause / Rename / Delete) and a "Back" button.
+  2) **Single address**: Directly show the address details with the action menu.
+
 **📊 Advanced Outage Statistics**
 Upcoming updates will introduce a powerful reporting system. Users will be able to view detailed network/power outage statistics for various periods:
 - For the current day (24 hours) or the last `n` days
@@ -24,6 +32,10 @@ Upcoming updates will introduce a powerful reporting system. Users will be able 
 **⚡ Batch Operations**
 - Bulk addition of multiple addresses at once
 - Bulk deletion of multiple hosts simultaneously
+
+## 🐛 Known Issues (Bugs)
+- **Time Display for Long Outages**: If the power was off for an extended period (e.g., 37 hours), the initial time display does not show the date. Needs to be updated to show the date if it doesn't match the current date.
+- **Incorrect Status Message**: The Ukrainian status message when requesting the list of monitored hosts currently says "Доступний" (Available) instead of the preferred "Світло є" (Power is on).
 
 ## Tech Stack
 - **Python 3.14**
