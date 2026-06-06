@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: svitlo_e_bot_db
+    hostname: svitlo_e_bot_db
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build:
+      context: ../
+      dockerfile: .ci-cd/Dockerfile
+    container_name: svitlo_e_bot
+    hostname: svitlo_e_bot
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    cap_add:
+      - NET_RAW
+    sysctls:
+      - net.ipv4.ping_group_range=0 2147483647
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: svitlo_e_bot_pgadmin
+    hostname: svitlo_e_bot_pgadmin
+    env_file:
+      - .env
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "40880:80"
+
+volumes:
+  pgdata:
+  pgadmin_data:
