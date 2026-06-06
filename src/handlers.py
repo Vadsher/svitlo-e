@@ -212,7 +212,7 @@ async def _show_list(message: Message) -> None:
             return
 
         for h in hosts:
-            status = "🟢 Доступний" if h.status_up else "🔴 Недоступний"
+            status = "🟢 Світло є" if h.status_up else "🔴 Світло вимкнено"
             paused = " (ПАУЗА)" if not h.is_active else ""
             text = f"🖥 *{h.pretty_name}* (`{h.address}`)\nСтатус: {status}{paused}"
             await message.answer(text, parse_mode="Markdown", reply_markup=get_host_keyboard(h.id, h.is_active))
@@ -229,9 +229,9 @@ async def callback_check(callback: CallbackQuery):
         if not host:
             return await callback.answer("Хост не знайдено", show_alert=True)
 
-        await callback.answer("Перевіряю...", show_alert=False)
+        await callback.answer(f"Перевіряю {host.pretty_name}...", show_alert=False)
         is_up = await check_host(host.address)
-        status = "🟢 Доступний" if is_up else "🔴 Недоступний"
+        status = "🟢 Світло є" if is_up else "🔴 Світло вимкнено"
         logger.info(f"Manual check for {host.address}: {'UP' if is_up else 'DOWN'}")
         await callback.message.reply(
             f"Поточний статус *{host.pretty_name}*: {status}", parse_mode="Markdown"
@@ -249,15 +249,26 @@ async def callback_toggle(callback: CallbackQuery):
             action = "відновлено" if host.is_active else "призупинено"
             logger.info(f"Monitoring for {host.address} {'resumed' if host.is_active else 'paused'}")
             await callback.message.edit_reply_markup(reply_markup=get_host_keyboard(host.id, host.is_active))
-            await callback.answer(f"Моніторинг {action}")
+            await callback.answer(f"Моніторинг {host.pretty_name} {action}")
 
 @router.callback_query(F.data.startswith("rename_"))
 async def callback_rename(callback: CallbackQuery, state: FSMContext):
     """Initiate rename process via inline button."""
     host_id = int(callback.data.split("_")[1])
+    
+    async with AsyncSessionLocal() as session:
+        host = await session.get(Host, host_id)
+        if not host:
+            return await callback.answer("Хост не знайдено", show_alert=True)
+        current_name = host.pretty_name
+
     await state.update_data(host_id=host_id)
     await state.set_state(RenameState.waiting_for_name)
-    await callback.message.answer("✏️ Введіть нову назву для цього хоста:", reply_markup=get_cancel_keyboard())
+    await callback.message.answer(
+        f"✏️ Введіть нову назву для хоста *{current_name}*:", 
+        parse_mode="Markdown",
+        reply_markup=get_cancel_keyboard()
+    )
     await callback.answer()
 
 @router.message(RenameState.waiting_for_name)
@@ -302,7 +313,7 @@ async def _show_delete_list(message: Message) -> None:
             parse_mode="Markdown",
         )
         for h in hosts:
-            status = "🟢 Доступний" if h.status_up else "🔴 Недоступний"
+            status = "🟢 Світло є" if h.status_up else "🔴 Світло вимкнено"
             text = f"🖥 *{h.pretty_name}* (`{h.address}`)\nСтатус: {status}"
             await message.answer(text, parse_mode="Markdown", reply_markup=get_host_keyboard(h.id, h.is_active))
 
@@ -325,8 +336,10 @@ async def callback_delete_confirm(callback: CallbackQuery):
         if not host:
             return await callback.answer("Хост не знайдено", show_alert=True)
 
-    await callback.message.edit_reply_markup(
-        reply_markup=get_delete_confirm_keyboard(host_id)
+    await callback.message.edit_text(
+        f"❓ Ви дійсно хочете видалити хост *{host.pretty_name}* (`{host.address}`)?\nЦю дію неможливо скасувати.",
+        parse_mode="Markdown",
+        reply_markup=get_delete_confirm_keyboard(host_id),
     )
     await callback.answer()
 

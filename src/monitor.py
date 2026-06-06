@@ -25,9 +25,14 @@ def format_duration(start: datetime, end: datetime) -> str:
     minutes, _ = divmod(remainder, 60)
     return f"{int(hours)} години {int(minutes):02d} хвилину(и)"
 
-def format_time(dt: datetime) -> str:
+def format_time(dt: datetime, reference: datetime = None) -> str:
     """Format datetime object to Kyiv timezone string."""
-    return dt.astimezone(KYIV_TZ).strftime("%H:%M")
+    dt_tz = dt.astimezone(KYIV_TZ)
+    if reference:
+        ref_tz = reference.astimezone(KYIV_TZ)
+        if dt_tz.date() != ref_tz.date():
+            return dt_tz.strftime("%d.%m %H:%M")
+    return dt_tz.strftime("%H:%M")
 
 async def check_host(address: str) -> bool:
     """Execute ICMP ping to the specified address."""
@@ -112,11 +117,11 @@ async def run_monitoring(bot) -> None:
                                 del _pending_changes[host.id]
                                 prev_time = host.last_change or now
                                 duration_str = format_duration(prev_time, now)
-                                time_range = f"🕒 {format_time(prev_time)} по {format_time(now)}"
+                                time_range = f"🕒 {format_time(prev_time, now)} по {format_time(now)}"
 
                                 if is_up:
                                     msg = (
-                                        f"💡 *Світло з'явилось* ({host.pretty_name})\n"
+                                        f"🔆 *Світло з'явилось* ({host.pretty_name})\n"
                                         f"Світла не було {duration_str} {time_range}"
                                     )
                                     logger.info(f"Host {host.address} confirmed UP.")
