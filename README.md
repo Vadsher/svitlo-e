@@ -7,7 +7,7 @@ An asynchronous Telegram bot designed to monitor the availability of network hos
 > 🤖 **Official Bot:** This repository contains the original source code powering [@custom_svitlo_e_bot](https://t.me/custom_svitlo_e_bot). You can deploy your own version using the instructions below or simply use our pre-hosted bot on Telegram!
 
 ## Key Features
-- 🖥️ **Interactive UI**: User-friendly menu with "➕ Add address", "📋 My list", and "🗑️ Delete address" buttons for simple management.
+- 🖥️ **Interactive UI**: User-friendly menu with "➕ Add address", "📋 My list", "⚙️ Settings", and "🗑️ Delete address" buttons for simple management.
 - 🛡️ **Robust Validation**: Automatic validation of entered IPv4 addresses and domain names.
 - ⏱️ **Flapping Protection**: Notifications about status changes are sent only after a specified number of consecutive successful/failed pings (configured via `STATUS_CHANGE_THRESHOLD`), allowing the bot to ignore brief network drops.
 - ⏸️ **Granular Control**: Ability to temporarily pause monitoring for individual hosts, rename them, delete them, or instantly trigger manual status checks.
