@@ -10,6 +10,7 @@ asyncpg = "*"
 icmplib = "*"
 tzdata = "*"
 alembic = "*"
+apscheduler = "*"
 
 [dev-packages]
 aiosqlite = "*"
