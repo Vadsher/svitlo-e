@@ -7,22 +7,18 @@ An asynchronous Telegram bot designed to monitor the availability of network hos
 > 🤖 **Official Bot:** This repository contains the original source code powering [@custom_svitlo_e_bot](https://t.me/custom_svitlo_e_bot). You can deploy your own version using the instructions below or simply use our pre-hosted bot on Telegram!
 
 ## Key Features
-- 🖥️ **Interactive UI**: User-friendly menu with "➕ Add address", "📋 My list", and "🗑️ Delete address" buttons for simple management.
+- 🖥️ **Interactive UI**: User-friendly menu with "➕ Add address", "📋 My list", "⚙️ Settings", and "🗑️ Delete address" buttons for simple management.
 - 🛡️ **Robust Validation**: Automatic validation of entered IPv4 addresses and domain names.
 - ⏱️ **Flapping Protection**: Notifications about status changes are sent only after a specified number of consecutive successful/failed pings (configured via `STATUS_CHANGE_THRESHOLD`), allowing the bot to ignore brief network drops.
 - ⏸️ **Granular Control**: Ability to temporarily pause monitoring for individual hosts, rename them, delete them, or instantly trigger manual status checks.
+- 👥 **Group Chats & Admin Roles**: Add the bot to group chats for shared notifications. Only group administrators can configure the bot (add/remove hosts), while all members receive outage notifications.
+- 🏘️ **Cluster Monitoring**: Group multiple IP addresses (e.g., neighbors' IPs) into a single logical cluster by separating them with commas. The "Power Off" notification is only triggered if *all* addresses in the cluster are unavailable.
+- 🔕 **Quiet Hours**: Configure quiet hours using `/settings` to suppress notifications during the night or other specific times.
+- 📊 **Scheduled Outage Reports**: The bot automatically sends daily, weekly, and monthly reports summarizing the number and duration of outages.
 
 ## 🚀 Planned Features (Roadmap)
 **🌍 Localization**
 - Add English localization and bot language selection.
-
-**👥 Group Chats & Admin Roles**
-- Support adding the bot to group chats (e.g., neighborhood communities).
-- Role-based access control: Only group administrators can configure the bot (add/remove hosts), while all members receive outage notifications.
-
-**🏘️ Complex Monitoring (Clusters)**
-- Group multiple IP addresses (e.g., neighbors' IPs) into a single logical cluster.
-- Ensure the "Power Off" notification is only triggered if *all* addresses in the cluster are unavailable, reducing false alarms.
 
 **📋 "My List" Flow Improvements**
 - Split the flow depending on the number of saved addresses:
@@ -40,6 +36,9 @@ Upcoming updates will introduce a powerful reporting system. Users will be able 
 **⚡ Batch Operations**
 - Bulk addition of multiple addresses at once
 - Bulk deletion of multiple hosts simultaneously
+
+**🔒 Private Setup Flow**
+- Moving administrative FSM steps and group configuration (via `/settings`, `/add`, etc.) to private direct messages with the bot using Deep Linking, preventing configuration commands and inputs from cluttering group chats.
 
 ## Tech Stack
 - **Python 3.14**
@@ -113,25 +112,36 @@ docker compose -f ./.ci-cd/docker-compose.yml logs -f bot
 
 ## Testing
 
-The project uses `pytest` for automated testing. 
+The project uses `pytest` for automated testing and a structured checklist for manual QA.
 
+### Manual QA Testing
+For step-by-step manual verification of features, refer to the [🧪 QA Testing Guide](QA_Checklist.md). This guide covers user flows, spam protection, quiet hours, and report scheduling.
+
+### Automated Testing
 To run the tests locally inside an isolated `python:3.14-slim` container (the exact same way it runs in CI/CD), execute the following command from the repository root:
 
 ```shell
 docker run --rm -v "${PWD}:/app" -w /app python:3.14-slim sh -c "pip install pipenv && pipenv install --dev && pipenv run pytest --cov=src tests -v"
 ```
 
-### Test Coverage: 40%
+### Test Coverage: 80%
 Test coverage is measured using `pytest-cov`. Below is the current breakdown per module:
 
 | Module | Statements | Missed | Coverage |
 |---|---|---|---|
 | `src/config.py` | 14 | 4 | **71%** |
-| `src/database.py` | 23 | 0 | **100%** |
-| `src/handlers.py` | 189 | 107 | **43%** |
-| `src/logger.py` | 13 | 13 | **0%** |
-| `src/main.py` | 21 | 21 | **0%** |
-| `src/monitor.py` | 76 | 56 | **26%** |
-| **TOTAL** | **336** | **201** | **40%** |
+| `src/database.py` | 34 | 0 | **100%** |
+| `src/filters.py` | 10 | 2 | **80%** |
+| `src/handlers/__init__.py` | 10 | 0 | **100%** |
+| `src/handlers/common.py` | 28 | 1 | **96%** |
+| `src/handlers/host_add.py` | 77 | 5 | **94%** |
+| `src/handlers/host_list.py` | 209 | 40 | **81%** |
+| `src/handlers/settings.py` | 138 | 33 | **76%** |
+| `src/handlers/utils.py` | 41 | 19 | **54%** |
+| `src/logger.py` | 13 | 0 | **100%** |
+| `src/main.py` | 25 | 25 | **0%** |
+| `src/monitor.py` | 99 | 18 | **82%** |
+| `src/scheduler.py` | 65 | 9 | **86%** |
+| **TOTAL** | **763** | **156** | **80%** |
 
-The 13 tests cover the core units: DB model CRUD, address validation FSM steps, and ping logic helpers. Integration-level code (`main.py`, `logger.py` startup logic) and complex async flows in `handlers.py` and `monitor.py` are the main coverage gaps — these are targeted for improvement in the next development phase.
+The tests now comprehensively cover DB model CRUD, address validation FSM steps, ping logic helpers, monitoring workflows, scheduling events, and all major user interaction flows inside the handlers module.

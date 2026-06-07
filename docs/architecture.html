@@ -303,8 +303,12 @@
             <td>SQLAlchemy engine, session factory, and ORM models (Host, Outage)</td>
           </tr>
           <tr>
-            <td>handlers.py</td>
-            <td>All Telegram command/callback handlers, FSM flows, keyboard builders, address validation</td>
+            <td>filters.py</td>
+            <td>Custom Aiogram filters (e.g., IsAdminFilter, ChatTypeFilter)</td>
+          </tr>
+          <tr>
+            <td>handlers/</td>
+            <td>Split logic: <code>common.py</code>, <code>host_add.py</code>, <code>host_list.py</code>, <code>settings.py</code>, <code>utils.py</code></td>
           </tr>
           <tr>
             <td>monitor.py</td>
@@ -313,6 +317,10 @@
           <tr>
             <td>logger.py</td>
             <td>Structured logging setup (stdout, timestamped)</td>
+          </tr>
+          <tr>
+            <td>scheduler.py</td>
+            <td>APScheduler jobs for daily, weekly, and monthly outage reports</td>
           </tr>
         </table>
       </div>
@@ -353,19 +361,40 @@
             <td>CRUD tests for Host and Outage models</td>
           </tr>
           <tr>
-            <td>test_handlers.py</td>
-            <td>Unit tests for FSM handler functions with mocked messages &amp; state</td>
+            <td>test_common.py</td>
+            <td>Unit tests for standard commands (/start, /help)</td>
+          </tr>
+          <tr>
+            <td>test_logger.py</td>
+            <td>Unit tests for logging configuration and stdout streaming</td>
+          </tr>
+          <tr>
+            <td>test_host_add.py</td>
+            <td>Unit tests for adding host FSM and validation</td>
+          </tr>
+          <tr>
+            <td>test_host_list.py</td>
+            <td>Unit tests for host management and inline menus</td>
+          </tr>
+          <tr>
+            <td>test_settings.py</td>
+            <td>Unit tests for settings config and FSMs</td>
           </tr>
           <tr>
             <td>test_monitor.py</td>
             <td>Tests for ping logic, duration formatting, and counter behavior</td>
+          </tr>
+          <tr>
+            <td>test_scheduler.py</td>
+            <td>Tests for report generation and APScheduler tasks</td>
           </tr>
         </table>
       </div>
       <div class="card">
         <h3>📁 <code>alembic/</code></h3>
         <p>Standard Alembic migration directory. <code>alembic.ini</code> points to <code>alembic/alembic.ini</code>. Migrations are generated via temporary Docker container and stored in
-          <code>migrations/versions/</code>.</p>
+          <code>migrations/versions/</code>.
+        </p>
       </div>
     </div>
 
@@ -399,6 +428,11 @@
             <td>pretty_name</td>
             <td>String</td>
             <td>User-friendly display name</td>
+          </tr>
+          <tr>
+            <td>ping_threshold</td>
+            <td>Integer</td>
+            <td>Custom host sensitivity (overrides default STATUS_CHANGE_THRESHOLD)</td>
           </tr>
           <tr>
             <td>is_active</td>
@@ -447,6 +481,46 @@
           </tr>
         </table>
         <p>An open outage record (<code>online_at = NULL</code>) means the host is currently considered DOWN.</p>
+      </div>
+      <div class="card">
+        <h3>💬 <code>ChatSettings</code> - table: <em>chat_settings</em></h3>
+        <table>
+          <tr>
+            <th>Column</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td>id</td>
+            <td>Integer PK</td>
+            <td>Auto-increment primary key</td>
+          </tr>
+          <tr>
+            <td>chat_id</td>
+            <td>BigInteger</td>
+            <td>Telegram chat ID (private or group)</td>
+          </tr>
+          <tr>
+            <td>timezone</td>
+            <td>String</td>
+            <td>IANA timezone (e.g., 'Europe/Kyiv')</td>
+          </tr>
+          <tr>
+            <td>report_time</td>
+            <td>Time</td>
+            <td>Scheduled time for daily/weekly reports</td>
+          </tr>
+          <tr>
+            <td>send_reports</td>
+            <td>Boolean</td>
+            <td>Whether reports are enabled</td>
+          </tr>
+          <tr>
+            <td>skip_empty_reports</td>
+            <td>Boolean</td>
+            <td>If true, suppress reports when there were 0 outages</td>
+          </tr>
+        </table>
       </div>
     </div>
 
@@ -536,7 +610,25 @@
       </div>
     </div>
 
-    <h3>4. Background Monitoring Loop - <code>run_monitoring()</code></h3>
+    <h3>4. Settings Flow (<code>/settings</code> or ⚙️ Налаштування button)</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title"><code>cmd_settings()</code></div>
+          <div class="step-desc">Shows current timezone and report settings for the chat with an inline menu.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Toggles & FSM</div>
+          <div class="step-desc">Toggle buttons instantly switch booleans in <code>ChatSettings</code>. Timezone/Report time buttons trigger FSM states to accept string/time inputs.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>5. Background Monitoring Loop - <code>run_monitoring()</code></h3>
     <div class="flow">
       <div class="flow-step">
         <div class="step-num">1</div>
@@ -577,7 +669,7 @@
       </div>
     </div>
 
-    <h3>5. Cancel Flow (❌ Скасувати)</h3>
+    <h3>6. Cancel Flow (❌ Скасувати)</h3>
     <div class="flow">
       <div class="flow-step">
         <div class="step-num">1</div>
@@ -602,7 +694,7 @@
           <tr>
             <td>get_main_menu_keyboard()</td>
             <td>Default / after any flow completes</td>
-            <td>➕ Додати адресу · 📋 Мій список · 🗑️ Видалити адресу</td>
+            <td>➕ Додати адресу · 📋 Мій список · ⚙️ Налаштування · 🗑️ Видалити адресу</td>
           </tr>
           <tr>
             <td>get_cancel_keyboard()</td>
@@ -712,12 +804,32 @@
         <td>Host creation, query, Outage record creation and closing</td>
       </tr>
       <tr>
-        <td>test_handlers.py</td>
-        <td>/start clears state, /add triggers FSM, address validation accepts/rejects inputs</td>
+        <td>test_common.py</td>
+        <td>/start, /help, /about, /cancel commands and state clearing</td>
+      </tr>
+      <tr>
+        <td>test_logger.py</td>
+        <td>setup_logging configuration, log handlers, and output destination</td>
+      </tr>
+      <tr>
+        <td>test_host_add.py</td>
+        <td>/add FSM triggers, address validation, threshold and name setup</td>
+      </tr>
+      <tr>
+        <td>test_host_list.py</td>
+        <td>/list, inline cards, toggle active, delete confirmation, edit address, threshold, renaming</td>
+      </tr>
+      <tr>
+        <td>test_settings.py</td>
+        <td>/settings FSM, timezone adjustments, toggle reports, daily time config</td>
       </tr>
       <tr>
         <td>test_monitor.py</td>
-        <td>duration formatting, check_host ping mocking, counter accumulation, counter reset on recovery</td>
+        <td>duration formatting, check_host ping mocking, cluster monitoring logic</td>
+      </tr>
+      <tr>
+        <td>test_scheduler.py</td>
+        <td>APScheduler daily/weekly outage summary reports generation</td>
       </tr>
     </table>
     <h4>Run locally</h4>

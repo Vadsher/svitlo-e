@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from icmplib import async_ping
 from sqlalchemy.future import select
 
-from src.database import AsyncSessionLocal, Host, Outage
+from src.database import AsyncSessionLocal, Host, Outage, ChatSettings
 from src.config import KYIV_TZ, STATUS_CHANGE_THRESHOLD
 
 logger = logging.getLogger(__name__)
@@ -35,10 +35,15 @@ def format_time(dt: datetime, reference: datetime = None) -> str:
     return dt_tz.strftime("%H:%M")
 
 async def check_host(address: str) -> bool:
-    """Execute ICMP ping to the specified address."""
+    """Execute ICMP ping to the specified address(es). Returns True if any is reachable."""
+    addresses = [addr.strip() for addr in address.split(',')]
     try:
-        host = await async_ping(address, count=2, timeout=2, privileged=False)
-        return host.is_alive
+        tasks = [async_ping(addr, count=2, timeout=2, privileged=False) for addr in addresses]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for res in results:
+            if not isinstance(res, Exception) and getattr(res, "is_alive", False):
+                return True
+        return False
     except Exception as e:
         logger.error(f"Ping error for {address}: {e}")
         return False
@@ -85,6 +90,8 @@ async def run_monitoring(bot) -> None:
                             continue
 
                         # ── Status unchanged from confirmed value ────────────
+                        threshold = host.ping_threshold if host.ping_threshold is not None else STATUS_CHANGE_THRESHOLD
+                        
                         if is_up == host.status_up:
                             # If there was a pending counter for this host, the
                             # host recovered before the threshold - reset silently.
@@ -92,7 +99,7 @@ async def run_monitoring(bot) -> None:
                                 logger.info(
                                     f"Host {host.address}: status reverted before "
                                     f"threshold ({_pending_changes[host.id][1]}"
-                                    f"/{STATUS_CHANGE_THRESHOLD}). Counter reset."
+                                    f"/{threshold}). Counter reset."
                                 )
                                 del _pending_changes[host.id]
                             continue
@@ -106,13 +113,13 @@ async def run_monitoring(bot) -> None:
                             logger.info(
                                 f"Host {host.address}: possible status change "
                                 f"to {'UP' if is_up else 'DOWN'} detected. "
-                                f"1/{STATUS_CHANGE_THRESHOLD}"
+                                f"1/{threshold}"
                             )
                         else:
                             # Another consecutive ping confirms the same new status.
                             new_count = pending[1] + 1
 
-                            if new_count >= STATUS_CHANGE_THRESHOLD:
+                            if new_count >= threshold:
                                 # ── Threshold reached → confirm change ───────
                                 del _pending_changes[host.id]
                                 prev_time = host.last_change or now
@@ -142,8 +149,23 @@ async def run_monitoring(bot) -> None:
                                     logger.info(f"Host {host.address} confirmed DOWN.")
                                     session.add(Outage(host_id=host.id, offline_at=now))
 
+                                chat_settings_res = await session.execute(select(ChatSettings).where(ChatSettings.chat_id == host.user_id))
+                                chat_settings = chat_settings_res.scalars().first()
+                                
+                                disable_notif = False
+                                if chat_settings and chat_settings.quiet_hours_start and chat_settings.quiet_hours_end:
+                                    now_time = datetime.now(KYIV_TZ).time()
+                                    start_t = chat_settings.quiet_hours_start
+                                    end_t = chat_settings.quiet_hours_end
+                                    if start_t < end_t:
+                                        if start_t <= now_time <= end_t:
+                                            disable_notif = True
+                                    else:
+                                        if now_time >= start_t or now_time <= end_t:
+                                            disable_notif = True
+
                                 await bot.send_message(
-                                    host.user_id, msg, parse_mode="Markdown"
+                                    host.user_id, msg, parse_mode="Markdown", disable_notification=disable_notif
                                 )
                                 host.status_up = is_up
                                 host.last_change = now
@@ -155,7 +177,7 @@ async def run_monitoring(bot) -> None:
                                 logger.info(
                                     f"Host {host.address}: consecutive "
                                     f"{'UP' if is_up else 'DOWN'} "
-                                    f"{new_count}/{STATUS_CHANGE_THRESHOLD}"
+                                    f"{new_count}/{threshold}"
                                 )
 
                     await session.commit()
